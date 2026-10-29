@@ -1,0 +1,14 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+KodBlok.xcodeproj/project.xcworkspace/
+
+# macOS
+.DS_Store
+
+# Release artifacts (attached to GitHub Releases instead)
+*.zip
+*.dmg

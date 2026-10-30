@@ -40,12 +40,22 @@ so you can move projects between your Mac and the computers at school.
   `0 error(s), 0 warning(s)`, *Build messages* table with File / Line / Message; click an error to jump to the line.
 - **Editor** — Code::Blocks colour scheme, line numbers, error lines highlighted in red, brace matching,
   auto-closing brackets and quotes, smart indentation, comment/uncomment, find & replace, find in files, go to line.
+- **Code completion** — while typing (after 3 letters, like Code::Blocks) a list pops up with library functions,
+  **your own functions, variables, structs and macros**, each with its signature and a short explanation of how to use it.
+  `↑↓` choose, `Enter`/`Tab` insert, `Esc` close; `Esc` or `⌃Space` opens it manually. After `.` you get
+  `string`/`vector` methods and the fields of your structs; after `#include <` a list of headers.
+- **Hover tooltips** — rest the mouse on `printf`, `scanf`, `strlen`, `cout`, `sort`… and a tooltip explains what it does.
+  For your own functions it shows the signature, file and line, plus the comment written above the function.
 - **New project / New file wizards** — Console application → C or C++ → title & folder → Debug/Release.
 - **Code::Blocks shortcuts** — `F9` Build and run, `⌘F9` Build, `⌘F10` Run, `⌘F11` Rebuild, `⌘.` Abort.
 
 | Console window | Build messages | New project wizard |
 |---|---|---|
 | ![console](docs/console.png) | ![errors](docs/build-errors.png) | ![wizard](docs/wizard.png) |
+
+| Code completion | Hover tooltip |
+|---|---|
+| ![completion](docs/completion.png) | ![hover](docs/hover.png) |
 
 ### Requirements
 
@@ -58,7 +68,7 @@ so you can move projects between your Mac and the computers at school.
 
 ### Installation
 
-1. Download **`KodBlok-2.0.zip`** from the [Releases](../../releases) page.
+1. Download **`KodBlok-2.1.zip`** from the [Releases](../../releases) page.
 2. Double-click the zip and drag **KodBlok** into your **Applications** folder.
 3. The app is not notarized by Apple, so the first time macOS will say it can't be opened.
    Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** (only needed once).
@@ -77,7 +87,7 @@ Open `KodBlok.xcodeproj` in Xcode 15 or newer and press **Run** (⌘R). No depen
 
 - **Debugger** — the debugger toolbar and menu are there, but not functional yet (planned: breakpoints, step,
   watches and call stack using `lldb`).
-- Code completion, code folding.
+- Code folding.
 - Intel Mac build.
 
 Contributions and bug reports are welcome — open an [issue](../../issues).
@@ -103,6 +113,12 @@ između svog Mac-a i računara na fakultetu.
 - **Isti build ispis** — greške u tabeli *Build messages*; klik na grešku vodi na liniju, koja je u editoru crvena.
 - **Editor** — Code::Blocks boje, brojevi linija, isticanje zagrada, automatsko zatvaranje zagrada,
   pametno uvlačenje, komentarisanje, pretraga i zamena, pretraga po fajlovima, skok na liniju.
+- **Dopunjavanje koda** — dok kucaš (posle 3 slova) iskače lista funkcija iz biblioteka, **tvojih funkcija,
+  promenljivih, struktura i makroa**, sa potpisom i objašnjenjem na srpskom kako se koriste. `↑↓` biraš,
+  `Enter`/`Tab` ubacuješ, `Esc` zatvara; `Esc` ili `⌃Space` otvara listu ručno. Posle `.` dobiješ metode
+  `string`/`vector` i polja tvojih struktura, a posle `#include <` listu biblioteka.
+- **Oblačić na prelazak mišem** — zadrži miš na `printf`, `scanf`, `strlen`, `cout`, `sort`… i pojaviće se opis.
+  Za tvoje funkcije prikazuje potpis, fajl i liniju, i komentar koji napišeš iznad funkcije.
 - **Wizard za novi projekat i fajl** — Console application → C ili C++ → naziv i folder → Debug/Release.
 - **Prečice kao u Code::Blocks-u** — `F9` Build and run, `⌘F9` Build, `⌘F10` Run, `⌘F11` Rebuild, `⌘.` Abort.
   (Na MacBook-u F-tasteri možda traže taster `fn`.)
@@ -114,7 +130,7 @@ između svog Mac-a i računara na fakultetu.
 
 ### Instalacija
 
-1. Preuzmi **`KodBlok-2.0.zip`** sa stranice [Releases](../../releases).
+1. Preuzmi **`KodBlok-2.1.zip`** sa stranice [Releases](../../releases).
 2. Otpakuj ga i prevuci **KodBlok** u **Applications**.
 3. Aplikacija nije notarizovana kod Apple-a, pa će je macOS prvi put blokirati:
    **System Settings → Privacy & Security → Open Anyway** (samo jednom).
@@ -124,7 +140,7 @@ Projekti se čuvaju u `~/KodBlok Projekti`.
 ### Šta još ne radi
 
 - **Debugger** (dugmad postoje, ali još ne rade — planiran je preko `lldb`-a)
-- Dopunjavanje koda dok kucaš, skupljanje blokova koda
+- Skupljanje blokova koda
 - Verzija za Intel Mac-ove
 
 Prijave grešaka i predlozi su dobrodošli — otvori [issue](../../issues).

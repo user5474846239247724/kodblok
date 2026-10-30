@@ -339,6 +339,8 @@ struct EditorNotebook: View {
                             errorLines: Set(ws.messages.filter { $0.kind == .error && $0.fileURL?.standardizedFileURL == doc.url }.compactMap { $0.line }),
                             fontSize: CGFloat(fontSize),
                             tabWidth: tabWidth,
+                            isC: ws.isCFile(doc.url),
+                            userDocs: { Workspace.shared.userDocs(for: doc.url) },
                             onCaret: { c in if ws.caret != c { ws.caret = c } },
                             onFocus: { tv in ws.activeTextView = tv }
                         )

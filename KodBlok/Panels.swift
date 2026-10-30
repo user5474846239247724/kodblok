@@ -454,7 +454,7 @@ struct StartPage: View {
                         Text("C/C++ IDE for macOS")
                             .font(.system(size: 15))
                             .foregroundStyle(Color(white: 0.3))
-                        Text("Release 2.0")
+                        Text("Release 2.1")
                             .font(.system(size: 12))
                             .foregroundStyle(Color(white: 0.45))
                     }

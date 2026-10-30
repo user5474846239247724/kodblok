@@ -423,6 +423,31 @@ final class Workspace: ObservableObject {
         projects.first { $0.contains(u) }
     }
 
+    /// Da li je fajl C (a ne C++) — tada lista dopunjavanja ne nudi cout, string, vector...
+    func isCFile(_ u: URL) -> Bool {
+        let e = u.pathExtension.lowercased()
+        if e == "c" { return true }
+        if Ext.isHeader(u), let p = project(containing: u) {
+            return !p.sources.isEmpty && p.sources.allSatisfy { $0.pathExtension.lowercased() == "c" }
+        }
+        return false
+    }
+
+    /// Tvoje funkcije, promenljive, strukture i makroi iz trenutnog fajla i ostalih fajlova projekta
+    func userDocs(for u: URL) -> (items: [DocItem], fields: [DocItem]) {
+        var urls: [URL] = [u]
+        if let p = project(containing: u) {
+            urls += p.units.filter { $0.standardizedFileURL != u && (Ext.isSource($0) || Ext.isHeader($0)) }
+        }
+        var files: [(name: String, text: String)] = []
+        for x in urls {
+            let std = x.standardizedFileURL
+            let t = openDocs.first { $0.url == std }?.text ?? (try? String(contentsOf: std, encoding: .utf8)) ?? ""
+            files.append((name: std.lastPathComponent, text: t))
+        }
+        return CodeDocs.userItems(files)
+    }
+
     // MARK: Projekti
 
     func addRecentProject(_ path: String) {

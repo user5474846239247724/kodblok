@@ -214,9 +214,24 @@ struct SettingsView: View {
     @AppStorage("cxxStd") private var cxxStd = "default"
     @AppStorage("cStd") private var cStd = "default"
     @AppStorage("extraWarnings") private var extraWarnings = false
+    @AppStorage("ccAuto") private var ccAuto = true
+    @AppStorage("ccChars") private var ccChars = 3
+    @AppStorage("ccHover") private var ccHover = true
 
     var body: some View {
         TabView {
+            Form {
+                Toggle("Automatically launch code completion while typing", isOn: $ccAuto)
+                Stepper("After typing \(ccChars) letter(s)", value: $ccChars, in: 1...6)
+                    .disabled(!ccAuto)
+                Toggle("Show tooltip with description on mouse hover", isOn: $ccHover)
+                Text("Esc or ⌃Space opens the list manually. ↑↓ choose, Enter/Tab insert, Esc close.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(20)
+            .tabItem { Label("Code completion", systemImage: "text.badge.plus") }
+
             Form {
                 Stepper("Font size: \(Int(fontSize))", value: $fontSize, in: 9...28)
                 Stepper("TAB size in spaces: \(tabWidth)", value: $tabWidth, in: 2...8)

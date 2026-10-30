@@ -6,6 +6,54 @@ import AppKit
 final class CBTextView: NSTextView {
     var errorLines: Set<Int> = [] { didSet { if errorLines != oldValue { needsDisplay = true } } }
     var highlightCaretLine = true
+    var onComplete: (() -> Void)?
+    var onHover: ((NSPoint?) -> Void)?
+    private var hoverArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let a = hoverArea { removeTrackingArea(a) }
+        let a = NSTrackingArea(rect: .zero,
+                               options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                               owner: self, userInfo: nil)
+        addTrackingArea(a)
+        hoverArea = a
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        onHover?(convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        onHover?(nil)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onHover?(nil)
+        super.mouseDown(with: event)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        onHover?(nil)
+        super.scrollWheel(with: event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        onHover?(nil)
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.control),
+           event.charactersIgnoringModifiers == " " {
+            onComplete?()
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    /// Esc (i ⌃Space) ručno otvara listu za dopunjavanje
+    override func complete(_ sender: Any?) {
+        onComplete?()
+    }
 
     func lineFragmentRect(forLine line: Int) -> NSRect? {
         guard let lm = layoutManager else { return nil }
@@ -71,10 +119,18 @@ struct CodeEditor: NSViewRepresentable {
     var errorLines: Set<Int>
     var fontSize: CGFloat
     var tabWidth: Int
+    var isC: Bool = false
+    var userDocs: () -> (items: [DocItem], fields: [DocItem]) = { ([], []) }
     var onCaret: (CaretInfo) -> Void
     var onFocus: (NSTextView) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
+        coordinator.hoverTimer?.invalidate()
+        coordinator.completion.hide()
+        coordinator.hover.hide()
+    }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -121,6 +177,10 @@ struct CodeEditor: NSViewRepresentable {
         tv.delegate = context.coordinator
         scroll.documentView = tv
         context.coordinator.textView = tv
+        let coord = context.coordinator
+        tv.onComplete = { [weak coord] in coord?.updateCompletion(auto: false) }
+        tv.onHover = { [weak coord] p in coord?.hoverMoved(p) }
+        coord.completion.onPick = { [weak coord] i in coord?.accept(i) }
 
         let ruler = LineNumberRuler(textView: tv)
         scroll.verticalRulerView = ruler
@@ -171,6 +231,12 @@ struct CodeEditor: NSViewRepresentable {
         var lastJump: UUID?
         var isEditing = false
         var suppress = false
+        let completion = CompletionController()
+        let hover = HoverController()
+        var hoverTimer: Timer?
+        var hoverWordRange = NSRange(location: NSNotFound, length: 0)
+        var lastTyped: String?
+        var completing = false
 
         init(_ parent: CodeEditor) { self.parent = parent }
 
@@ -185,6 +251,179 @@ struct CodeEditor: NSViewRepresentable {
             Highlighter.highlight(tv)
             ruler?.needsDisplay = true
             updateBraceMatch()
+
+            let typed = lastTyped
+            lastTyped = nil
+            if completing { return }
+            if completion.isVisible {
+                updateCompletion(auto: true)
+            } else if let t = typed, t.count == 1, let ch = t.utf16.first,
+                      Self.isIdent(ch) || ch == 46 || ch == 62 || ch == 60 || ch == 34 || ch == 35 {
+                updateCompletion(auto: true)
+            }
+        }
+
+        // MARK: Dopunjavanje koda (code completion)
+
+        static func isIdent(_ c: unichar) -> Bool {
+            (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95
+        }
+
+        static let includeRe = try! NSRegularExpression(pattern: #"^\s*#\s*include\s*[<"]([\w./+-]*)$"#)
+        static let directiveRe = try! NSRegularExpression(pattern: #"^\s*#\s*(\w*)$"#)
+
+        func inStringOrComment(_ tv: NSTextView, _ idx: Int) -> Bool {
+            guard let storage = tv.textStorage, idx >= 0, idx < storage.length else { return false }
+            guard let color = storage.attribute(.foregroundColor, at: idx, effectiveRange: nil) as? NSColor else { return false }
+            return color == Highlighter.cString || color == Highlighter.cComment || color == Highlighter.cChar
+        }
+
+        func updateCompletion(auto: Bool) {
+            guard let tv = textView else { return }
+            let defaults = UserDefaults.standard
+            if auto && !completion.isVisible && (defaults.object(forKey: "ccAuto") as? Bool ?? true) == false { return }
+            let minChars = max(1, defaults.object(forKey: "ccChars") as? Int ?? 3)
+            let sel = tv.selectedRange()
+            guard sel.length == 0 else { completion.hide(); return }
+            let ns = tv.string as NSString
+            let caret = sel.location
+            let lineStart = ns.lineRange(for: NSRange(location: caret, length: 0)).location
+            let lineBefore = ns.substring(with: NSRange(location: lineStart, length: caret - lineStart))
+            let lb = lineBefore as NSString
+            var start = caret
+            while start > lineStart, Self.isIdent(ns.character(at: start - 1)) { start -= 1 }
+            let prefix = ns.substring(with: NSRange(location: start, length: caret - start))
+            let isC = parent.isC
+            var items: [DocItem] = []
+
+            if let m = Self.includeRe.firstMatch(in: lineBefore, range: NSRange(location: 0, length: lb.length)) {
+                let partial = lb.substring(with: m.range(at: 1))
+                start = caret - (partial as NSString).length
+                items = CodeDocs.headers.filter {
+                    (!isC || $0.lang == .c) && (partial.isEmpty || $0.name.lowercased().hasPrefix(partial.lowercased()))
+                }
+            } else if let m = Self.directiveRe.firstMatch(in: lineBefore, range: NSRange(location: 0, length: lb.length)) {
+                let partial = lb.substring(with: m.range(at: 1))
+                items = CodeDocs.directives.filter { partial.isEmpty || $0.name.hasPrefix(partial) }
+            } else {
+                if inStringOrComment(tv, caret - 1) { completion.hide(); return }
+                let c1: unichar = start > 0 ? ns.character(at: start - 1) : 0
+                let c2: unichar = start > 1 ? ns.character(at: start - 2) : 0
+                var member = c1 == 46 || (c1 == 62 && c2 == 45)
+                if c1 == 46 && c2 >= 48 && c2 <= 57 { member = false }
+                if member {
+                    let pool = parent.userDocs().fields + (isC ? [] : CodeDocs.members)
+                    items = CodeDocs.rank(pool, prefix: prefix)
+                } else {
+                    if prefix.isEmpty && auto { completion.hide(); return }
+                    if auto && prefix.count < minChars { completion.hide(); return }
+                    if let f = prefix.utf16.first, f >= 48 && f <= 57 { completion.hide(); return }
+                    items = CodeDocs.rank(parent.userDocs().items + CodeDocs.base(isC: isC), prefix: prefix)
+                }
+            }
+            if items.isEmpty || (auto && items.count == 1 && items[0].name == prefix) {
+                completion.hide()
+                return
+            }
+            hover.hide()
+            completion.show(items, start: start, in: tv)
+        }
+
+        func accept(_ i: Int) {
+            guard let tv = textView, i < completion.model.items.count else { return }
+            let it = completion.model.items[i]
+            let ns = tv.string as NSString
+            let caret = tv.selectedRange().location
+            var end = caret
+            while end < ns.length, Self.isIdent(ns.character(at: end)) || (it.kind == .header && [46, 47].contains(ns.character(at: end))) {
+                end += 1
+            }
+            let start = min(completion.prefixStart, caret)
+            let range = NSRange(location: start, length: end - start)
+            var text = it.name
+            var caretOffset = (text as NSString).length
+            let after: unichar? = end < ns.length ? ns.character(at: end) : nil
+            switch it.kind {
+            case _ where it.isCallable:
+                if after != 40 {
+                    text += "()"
+                    caretOffset = (it.name as NSString).length + (it.hasParams ? 1 : 2)
+                }
+            case .header:
+                let open: unichar = start > 0 ? ns.character(at: start - 1) : 60
+                let close = open == 34 ? "\"" : ">"
+                if after != 62 && after != 34 { text += close }
+                caretOffset = (text as NSString).length
+            case .directive:
+                text += it.name == "include" ? " <" : " "
+                caretOffset = (text as NSString).length
+            default:
+                break
+            }
+            completing = true
+            tv.insertText(text, replacementRange: range)
+            completing = false
+            tv.setSelectedRange(NSRange(location: start + caretOffset, length: 0))
+            completion.hide()
+            if it.kind == .directive && it.name == "include" { updateCompletion(auto: false) }
+        }
+
+        // MARK: Oblačić sa opisom na prelazak mišem
+
+        func hoverMoved(_ p: NSPoint?) {
+            hoverTimer?.invalidate()
+            hoverTimer = nil
+            guard let p, let tv = textView, (UserDefaults.standard.object(forKey: "ccHover") as? Bool ?? true),
+                  !completion.isVisible, let r = wordRange(at: p, in: tv) else {
+                hover.hide()
+                hoverWordRange.location = NSNotFound
+                return
+            }
+            if NSEqualRanges(r, hoverWordRange) && hover.isVisible { return }
+            hover.hide()
+            hoverWordRange = r
+            hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+                self?.showHover(r)
+            }
+        }
+
+        private func wordRange(at p: NSPoint, in tv: NSTextView) -> NSRange? {
+            guard let lm = tv.layoutManager, let tc = tv.textContainer else { return nil }
+            let ns = tv.string as NSString
+            guard ns.length > 0 else { return nil }
+            let pt = NSPoint(x: p.x - tv.textContainerOrigin.x, y: p.y - tv.textContainerOrigin.y)
+            var frac: CGFloat = 0
+            let g = lm.glyphIndex(for: pt, in: tc, fractionOfDistanceThroughGlyph: &frac)
+            guard g < lm.numberOfGlyphs else { return nil }
+            let rect = lm.boundingRect(forGlyphRange: NSRange(location: g, length: 1), in: tc)
+            guard rect.insetBy(dx: -1, dy: 0).contains(pt) else { return nil }
+            let idx = lm.characterIndexForGlyph(at: g)
+            guard idx < ns.length, Self.isIdent(ns.character(at: idx)) else { return nil }
+            var s = idx, e = idx
+            while s > 0, Self.isIdent(ns.character(at: s - 1)) { s -= 1 }
+            while e < ns.length, Self.isIdent(ns.character(at: e)) { e += 1 }
+            let first = ns.character(at: s)
+            if first >= 48 && first <= 57 { return nil }
+            return NSRange(location: s, length: e - s)
+        }
+
+        private func showHover(_ r: NSRange) {
+            guard let tv = textView, tv.window?.isKeyWindow == true else { return }
+            let ns = tv.string as NSString
+            guard NSMaxRange(r) <= ns.length, !inStringOrComment(tv, r.location) else { return }
+            let word = ns.substring(with: r)
+            let isMember = r.location > 0 && ns.character(at: r.location - 1) == 46
+            let docs = parent.userDocs()
+            var item: DocItem?
+            if isMember {
+                item = docs.fields.first { $0.name == word } ?? (parent.isC ? nil : CodeDocs.members.first { $0.name == word })
+            }
+            if item == nil { item = docs.items.first { $0.name == word && ($0.kind == .userFunction || $0.kind == .macro || $0.kind == .type) } }
+            if item == nil, let lib = CodeDocs.byName[word], !(parent.isC && lib.lang == .cpp) { item = lib }
+            if item == nil { item = docs.items.first { $0.name == word } }
+            guard let item else { return }
+            let rect = tv.firstRect(forCharacterRange: r, actualRange: nil)
+            hover.show(item, at: rect, in: tv)
         }
 
         func textDidBeginEditing(_ notification: Notification) {
@@ -192,6 +431,14 @@ struct CodeEditor: NSViewRepresentable {
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
+            if completion.isVisible, let tv = textView {
+                let sel = tv.selectedRange()
+                let ns = tv.string as NSString
+                let lineStart = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0)).location
+                if sel.length > 0 || sel.location < completion.prefixStart || lineStart > completion.prefixStart {
+                    completion.hide()
+                }
+            }
             reportCaret()
             updateBraceMatch()
             textView?.needsDisplay = true
@@ -265,6 +512,7 @@ struct CodeEditor: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString text: String?) -> Bool {
+            if !suppress && !completing { lastTyped = text }
             guard !suppress, let text, range.length == 0 else { return true }
             let ns = textView.string as NSString
             let next: unichar? = range.location < ns.length ? ns.character(at: range.location) : nil
@@ -309,6 +557,28 @@ struct CodeEditor: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            if completion.isVisible {
+                switch selector {
+                case #selector(NSResponder.moveUp(_:)):
+                    completion.move(-1); return true
+                case #selector(NSResponder.moveDown(_:)):
+                    completion.move(1); return true
+                case #selector(NSResponder.pageUp(_:)), #selector(NSResponder.scrollPageUp(_:)):
+                    completion.move(-8); return true
+                case #selector(NSResponder.pageDown(_:)), #selector(NSResponder.scrollPageDown(_:)):
+                    completion.move(8); return true
+                case #selector(NSResponder.insertNewline(_:)), #selector(NSResponder.insertTab(_:)):
+                    accept(completion.model.selected); return true
+                case #selector(NSResponder.cancelOperation(_:)):
+                    completion.hide(); return true
+                case #selector(NSResponder.moveLeft(_:)), #selector(NSResponder.moveRight(_:)),
+                     #selector(NSResponder.moveToBeginningOfLine(_:)), #selector(NSResponder.moveToEndOfLine(_:)):
+                    completion.hide()
+                default:
+                    break
+                }
+            }
+            hover.hide()
             let unit = indentUnit
             if selector == #selector(NSResponder.insertNewline(_:)) {
                 let ns = textView.string as NSString

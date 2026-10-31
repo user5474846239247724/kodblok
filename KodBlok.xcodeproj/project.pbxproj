@@ -18,6 +18,8 @@
 		1E56DB228CF9E11A4B8216CD /* Wizards.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8CC2D547059AE84C9BCB490 /* Wizards.swift */; };
 		024D482FB36FA3F03843B7D0 /* CodeDocs.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E4B4166C121B2BDE8D0910 /* CodeDocs.swift */; };
 		EAEF752561739B8CBA74246E /* Completion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE8934327F5137E0D0D3E8C /* Completion.swift */; };
+		41EBE9C0CEA62A8A222A0DE8 /* Assistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA348C933591EF03F5EC760D /* Assistant.swift */; };
+		ACCB32E86830A938D1F483BB /* AssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13621AE124088D53556BF089 /* AssistantView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +35,8 @@
 		F8CC2D547059AE84C9BCB490 /* Wizards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wizards.swift; sourceTree = "<group>"; };
 		E0E4B4166C121B2BDE8D0910 /* CodeDocs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeDocs.swift; sourceTree = "<group>"; };
 		1BE8934327F5137E0D0D3E8C /* Completion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Completion.swift; sourceTree = "<group>"; };
+		EA348C933591EF03F5EC760D /* Assistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Assistant.swift; sourceTree = "<group>"; };
+		13621AE124088D53556BF089 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +74,8 @@
 				41662EF65E02A642B60039BF /* ConsoleSession.swift */,
 				A13C5638C90C5BD8B2B9982C /* CodeEditor.swift */,
 				5AFD2C4476DEBA6FD135B765 /* ContentView.swift */,
+				EA348C933591EF03F5EC760D /* Assistant.swift */,
+				13621AE124088D53556BF089 /* AssistantView.swift */,
 				E0E4B4166C121B2BDE8D0910 /* CodeDocs.swift */,
 				1BE8934327F5137E0D0D3E8C /* Completion.swift */,
 				2C58A968B86428787D6B6CD4 /* Build.swift */,
@@ -154,6 +160,8 @@
 				BE456A91E908FC5995CB3222 /* ConsoleSession.swift in Sources */,
 				DE69C1C4940AB6AE9BF139E3 /* CodeEditor.swift in Sources */,
 				9C88749071B643DAB9969D26 /* ContentView.swift in Sources */,
+				41EBE9C0CEA62A8A222A0DE8 /* Assistant.swift in Sources */,
+				ACCB32E86830A938D1F483BB /* AssistantView.swift in Sources */,
 				024D482FB36FA3F03843B7D0 /* CodeDocs.swift in Sources */,
 				EAEF752561739B8CBA74246E /* Completion.swift in Sources */,
 				390DA900AF47286A86B9C74B /* Build.swift in Sources */,
@@ -219,7 +227,7 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/build/$(CONFIGURATION)";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_DEBUG_DYLIB = NO;
@@ -231,7 +239,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "KodBlok — C/C++ IDE";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitar.kodblok;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -252,7 +260,7 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/build/$(CONFIGURATION)";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_DEBUG_DYLIB = NO;
@@ -264,7 +272,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "KodBlok — C/C++ IDE";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitar.kodblok;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;

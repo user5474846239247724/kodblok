@@ -7,6 +7,7 @@ struct MainView: View {
     @EnvironmentObject var ws: Workspace
     @AppStorage("mgmtWidth") private var mgmtWidth: Double = 250
     @AppStorage("logsHeight") private var logsHeight: Double = 190
+    @AppStorage("claudeWidth") private var claudeWidth: Double = 380
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +31,11 @@ struct MainView: View {
                     }
                 }
                 .frame(minWidth: 400)
+                if ws.showClaude {
+                    SplitHandle(vertical: true, value: $claudeWidth, range: 280...700, invert: true)
+                    AssistantPanel()
+                        .frame(width: claudeWidth)
+                }
             }
             if ws.showStatusBar {
                 StatusBar()
@@ -234,6 +240,16 @@ struct ToolbarArea: View {
                     .frame(width: 96)
                 }
                 Spacer(minLength: 0)
+                Button { ws.showClaude.toggle() } label: {
+                    Label("Claude", systemImage: "sparkles")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(ws.showClaude ? Color.white : Color(red: 0.8, green: 0.4, blue: 0.15))
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Capsule().fill(ws.showClaude ? Color(red: 0.85, green: 0.45, blue: 0.2) : Color.white))
+                        .overlay(Capsule().stroke(Color(red: 0.85, green: 0.45, blue: 0.2)))
+                }
+                .buttonStyle(.plain)
+                .help("Claude — asistent za učenje (⌥⌘C)")
             }
             HStack(spacing: 6) {
                 ToolbarGroup {

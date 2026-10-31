@@ -110,6 +110,8 @@ struct MenuCommands: Commands {
                 .keyboardShortcut(.fn(2), modifiers: [.shift])
             Toggle("Logs", isOn: $ws.showLogs)
                 .keyboardShortcut(.fn(2), modifiers: [])
+            Toggle("Claude assistant", isOn: $ws.showClaude)
+                .keyboardShortcut("c", modifiers: [.command, .option])
             Toggle("Toolbars", isOn: $ws.showToolbars)
             Toggle("Status bar", isOn: $ws.showStatusBar)
             Divider()

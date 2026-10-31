@@ -426,6 +426,26 @@ struct CodeEditor: NSViewRepresentable {
             hover.show(item, at: rect, in: tv)
         }
 
+        // Desni klik u editoru: "Objasni označeno (Claude)"
+        func textView(_ view: NSTextView, menu: NSMenu, for event: NSEvent, at charIndex: Int) -> NSMenu? {
+            let item = NSMenuItem(title: "Objasni označeno (Claude)", action: #selector(explainSelection(_:)), keyEquivalent: "")
+            item.target = self
+            item.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: nil)
+            menu.insertItem(item, at: 0)
+            menu.insertItem(.separator(), at: 1)
+            return menu
+        }
+
+        @objc func explainSelection(_ sender: Any?) {
+            guard let tv = textView else { return }
+            let ns = tv.string as NSString
+            var r = tv.selectedRange()
+            if r.length == 0 { r = ns.lineRange(for: r) }
+            let text = ns.substring(with: r).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return }
+            Workspace.shared.explainSelection(text)
+        }
+
         func textDidBeginEditing(_ notification: Notification) {
             if let tv = textView { parent.onFocus(tv) }
         }

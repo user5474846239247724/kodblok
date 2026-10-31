@@ -306,6 +306,9 @@ final class Workspace: ObservableObject {
     @Published var showLogs = true
     @Published var showToolbars = true
     @Published var showStatusBar = true
+    @Published var showClaude = UserDefaults.standard.object(forKey: "showClaude") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showClaude, forKey: "showClaude") }
+    }
     @Published var showNewProject = false
     @Published var showNewFile = false
     @Published var showFindInFiles = false
@@ -421,6 +424,41 @@ final class Workspace: ObservableObject {
 
     func project(containing u: URL) -> CBProject? {
         projects.first { $0.contains(u) }
+    }
+
+    // MARK: Claude asistent
+
+    /// Kod iz editora (sa brojevima linija) i greške iz poslednjeg build-a, za Claude-a
+    func assistantContext() -> String {
+        guard let d = currentDocument else { return "" }
+        let lines = d.text.components(separatedBy: "\n")
+        let shown = lines.prefix(500).enumerated().map { i, l -> String in
+            let n = String(i + 1)
+            return String(repeating: " ", count: max(0, 3 - n.count)) + n + "| " + l
+        }.joined(separator: "\n")
+        var s = "[Trenutni fajl: \(d.name)"
+        if let p = project(containing: d.url) { s += ", projekat \(p.title)" }
+        s += "]\n```\(isCFile(d.url) ? "c" : "cpp")\n\(shown)\n```"
+        let errs = messages.filter { $0.kind == .error || $0.kind == .warning }
+        if !errs.isEmpty {
+            s += "\n[Build greške]\n" + errs.prefix(15).map { m in
+                "\(m.file):\(m.line.map(String.init) ?? "") \(m.text)"
+            }.joined(separator: "\n")
+        }
+        return s
+    }
+
+    func insertCode(_ code: String) {
+        guard let tv = activeTextView else { return }
+        tv.window?.makeFirstResponder(tv)
+        tv.insertText(code, replacementRange: tv.selectedRange())
+    }
+
+    func explainSelection(_ text: String) {
+        showClaude = true
+        let ai = AssistantModel.shared
+        guard ai.isReady else { return }
+        ai.send("Objasni mi ovaj deo koda, jednostavno:\n```\n\(text)\n```", context: assistantContext())
     }
 
     /// Da li je fajl C (a ne C++) — tada lista dopunjavanja ne nudi cout, string, vector...
